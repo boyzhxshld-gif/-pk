@@ -74,34 +74,35 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
     return [...selected, correct].sort(() => 0.5 - Math.random());
   };
 
-  // Strictly determine display text based on mode
-  const getDisplayText = (targetWord: Word, type: 'question' | 'answer', masterWord: Word) => {
-      // 1. Determine if the QUESTION should be English
-      let isQuestionEnglish = true;
-
+  // Helper to determine the mode for the current round
+  const getRoundMode = (masterWord: Word): 'en-to-cn' | 'cn-to-en' => {
+      // 1. Explicit Mode Check
       if (settings.questionType === 'chinese-to-english') {
+          return 'cn-to-en';
+      }
+      if (settings.questionType === 'english-to-chinese') {
+          return 'en-to-cn';
+      }
+      
+      // 2. Random Mode: Deterministic decision based on word property
+      // This ensures that for a specific word, the direction is consistent during a render
+      return masterWord.english.length % 2 === 0 ? 'en-to-cn' : 'cn-to-en';
+  };
+
+  // Strictly determine display text
+  const getDisplayText = (targetWord: Word, type: 'question' | 'answer', masterWord: Word) => {
+      const mode = getRoundMode(masterWord);
+
+      if (mode === 'cn-to-en') {
           // Mode: Chinese -> English
           // Question: Chinese
           // Answer: English
-          isQuestionEnglish = false;
-      } else if (settings.questionType === 'english-to-chinese') {
+          return type === 'question' ? targetWord.chinese : targetWord.english;
+      } else {
           // Mode: English -> Chinese
           // Question: English
           // Answer: Chinese
-          isQuestionEnglish = true;
-      } else {
-          // Mode: Random
-          // Decide based on properties of the Question Word (masterWord) to keep round consistent
-          // If length is even -> Question English. If odd -> Question Chinese.
-          isQuestionEnglish = masterWord.english.length % 2 === 0;
-      }
-
-      // 2. Return text based on type
-      if (type === 'question') {
-          return isQuestionEnglish ? targetWord.english : targetWord.chinese;
-      } else {
-          // Answer is always opposite language of the question
-          return isQuestionEnglish ? targetWord.chinese : targetWord.english;
+          return type === 'question' ? targetWord.english : targetWord.chinese;
       }
   };
 
@@ -122,21 +123,19 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
        let placed = false;
        
        // Calculate dynamic width based on content length
-       // Must pass correctWord as master to ensure correct text length is calculated for the ANSWER
        const answerText = getDisplayText(word, 'answer', correctWord);
        
        // Estimate visual length: Chinese chars = 2 units, English = 1 unit
        const visualLength = answerText.split('').reduce((acc, char) => acc + (char.charCodeAt(0) > 255 ? 2 : 1), 0);
        
        // Base calculation: Min 18% + chars * factor
-       // scale factor adds some randomness to size
        const scale = 0.95 + Math.random() * 0.2; 
        
        let calculatedWidth = (16 + (visualLength * 2.2)) * scale;
        
        // Clamping width
        if (calculatedWidth < 18) calculatedWidth = 18;
-       if (calculatedWidth > 48) calculatedWidth = 48; // Max width to prevent too wide
+       if (calculatedWidth > 48) calculatedWidth = 48; // Max width
        
        const optionWidth = calculatedWidth;
        const optionHeight = 14 + Math.random() * 4; // Variable height slightly
@@ -206,7 +205,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
        }
        
        if (!placed) {
-           // Fallback grid if random placement fails (should be rare with small count)
+           // Fallback grid
            const fallbackX = 10 + (index % 2) * 45;
            const fallbackY = 30 + Math.floor(index / 2) * 18;
            options.push({
@@ -424,8 +423,8 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
   const isWarning = timeLeft <= 10;
 
   const getQuestionModeLabel = () => {
-      if (settings.questionType === 'chinese-to-english') return '中 ➜ 英';
-      if (settings.questionType === 'english-to-chinese') return '英 ➜ 中';
+      if (settings.questionType === 'chinese-to-english') return '看中文 ➜ 选英文';
+      if (settings.questionType === 'english-to-chinese') return '看英文 ➜ 选中文';
       return '混合模式';
   }
 
@@ -470,7 +469,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
                     </span>
                 </div>
                 <div className="bg-white/80 backdrop-blur-md text-gray-800 px-4 py-1 rounded-full border border-white/50 shadow-sm">
-                    <span className="font-black text-xs tracking-widest">
+                    <span className="font-black text-xs tracking-widest whitespace-nowrap">
                         {getQuestionModeLabel()}
                     </span>
                 </div>

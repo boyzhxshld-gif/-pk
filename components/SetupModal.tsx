@@ -252,9 +252,9 @@ const SetupModal: React.FC<SetupModalProps> = ({ selectedWords, isOpen, onClose,
                              <label className="text-gray-400 text-xs font-bold uppercase mb-2 block">题型</label>
                              <div className="flex flex-col gap-2">
                                 {[
-                                    { id: 'english-to-chinese', label: '英 ➜ 中' },
-                                    { id: 'chinese-to-english', label: '中 ➜ 英' },
-                                    { id: 'random', label: '混合模式' }
+                                    { id: 'english-to-chinese', label: '英 ➜ 中', sub: '看英文 选中文' },
+                                    { id: 'chinese-to-english', label: '中 ➜ 英', sub: '看中文 选英文' },
+                                    { id: 'random', label: '混合模式', sub: '随机切换' }
                                 ].map((option) => (
                                     <button 
                                         key={option.id} 
@@ -266,7 +266,10 @@ const SetupModal: React.FC<SetupModalProps> = ({ selectedWords, isOpen, onClose,
                                                 : 'border-gray-100 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}
                                         `}
                                     >
-                                        <span className="font-bold text-sm">{option.label}</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-sm">{option.label}</span>
+                                            <span className={`text-xs mt-0.5 ${settings.questionType === option.id ? 'text-white/80' : 'text-gray-400'}`}>{option.sub}</span>
+                                        </div>
                                         {settings.questionType === option.id && <i className="fa fa-check-circle"></i>}
                                     </button>
                                 ))}
