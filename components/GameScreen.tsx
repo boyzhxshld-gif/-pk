@@ -74,16 +74,34 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
     return [...selected, correct].sort(() => 0.5 - Math.random());
   };
 
-  const getDisplayText = (word: Word, type: 'question' | 'answer') => {
-      if (settings.questionType === 'english-to-chinese') {
-          return type === 'question' ? word.english : word.chinese;
-      } else if (settings.questionType === 'chinese-to-english') {
-          return type === 'question' ? word.chinese : word.english;
+  // Strictly determine display text based on mode
+  const getDisplayText = (targetWord: Word, type: 'question' | 'answer', masterWord: Word) => {
+      // 1. Determine if the QUESTION should be English
+      let isQuestionEnglish = true;
+
+      if (settings.questionType === 'chinese-to-english') {
+          // Mode: Chinese -> English
+          // Question: Chinese
+          // Answer: English
+          isQuestionEnglish = false;
+      } else if (settings.questionType === 'english-to-chinese') {
+          // Mode: English -> Chinese
+          // Question: English
+          // Answer: Chinese
+          isQuestionEnglish = true;
       } else {
-          const isEven = word.english.length % 2 === 0;
-          return type === 'question' 
-              ? (isEven ? word.english : word.chinese)
-              : (isEven ? word.chinese : word.english);
+          // Mode: Random
+          // Decide based on properties of the Question Word (masterWord) to keep round consistent
+          // If length is even -> Question English. If odd -> Question Chinese.
+          isQuestionEnglish = masterWord.english.length % 2 === 0;
+      }
+
+      // 2. Return text based on type
+      if (type === 'question') {
+          return isQuestionEnglish ? targetWord.english : targetWord.chinese;
+      } else {
+          // Answer is always opposite language of the question
+          return isQuestionEnglish ? targetWord.chinese : targetWord.english;
       }
   };
 
@@ -104,7 +122,9 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
        let placed = false;
        
        // Calculate dynamic width based on content length
-       const answerText = getDisplayText(word, 'answer');
+       // Must pass correctWord as master to ensure correct text length is calculated for the ANSWER
+       const answerText = getDisplayText(word, 'answer', correctWord);
+       
        // Estimate visual length: Chinese chars = 2 units, English = 1 unit
        const visualLength = answerText.split('').reduce((acc, char) => acc + (char.charCodeAt(0) > 255 ? 2 : 1), 0);
        
@@ -352,7 +372,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
                    `}>
                       <div className="flex flex-col items-center relative z-10">
                         <h4 className={`text-3xl md:text-4xl font-black ${textColor} text-center leading-tight drop-shadow-sm break-words max-w-full`}>
-                            {getDisplayText(currentWord, 'question')}
+                            {getDisplayText(currentWord, 'question', currentWord)}
                         </h4>
                       </div>
                    </div>
@@ -389,7 +409,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
                             whitespace-nowrap
                         `}
                       >
-                          <span className="pointer-events-none">{getDisplayText(opt, 'answer')}</span>
+                          <span className="pointer-events-none">{getDisplayText(opt, 'answer', currentWord)}</span>
                       </button>
                   )})}
               </div>
@@ -402,6 +422,12 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
   const circumference = 2 * Math.PI * radius;
   const progress = ((settings.timeLimit - timeLeft) / settings.timeLimit) * circumference;
   const isWarning = timeLeft <= 10;
+
+  const getQuestionModeLabel = () => {
+      if (settings.questionType === 'chinese-to-english') return '中 ➜ 英';
+      if (settings.questionType === 'english-to-chinese') return '英 ➜ 中';
+      return '混合模式';
+  }
 
   return (
     <div className="fixed inset-0 z-30 bg-gray-900 flex flex-col h-full w-full overflow-hidden font-sans select-none">
@@ -436,11 +462,18 @@ const GameScreen: React.FC<GameScreenProps> = ({ settings, wordPool, onEndGame }
                 </div>
             </div>
             
-            {/* Game Mode Badge */}
-            <div className="mt-2 bg-black/60 backdrop-blur-md text-white px-4 py-1 rounded-full border border-white/20 shadow-sm">
-                 <span className="font-bold text-xs tracking-widest">
-                    {settings.gameType === 'rush' ? 'RUSH MODE' : 'BATTLE MODE'}
-                 </span>
+            {/* Game Mode Badges */}
+            <div className="mt-2 flex flex-col gap-1 items-center">
+                <div className="bg-black/60 backdrop-blur-md text-white px-4 py-1 rounded-full border border-white/20 shadow-sm">
+                    <span className="font-bold text-xs tracking-widest">
+                        {settings.gameType === 'rush' ? 'RUSH MODE' : 'BATTLE MODE'}
+                    </span>
+                </div>
+                <div className="bg-white/80 backdrop-blur-md text-gray-800 px-4 py-1 rounded-full border border-white/50 shadow-sm">
+                    <span className="font-black text-xs tracking-widest">
+                        {getQuestionModeLabel()}
+                    </span>
+                </div>
             </div>
         </div>
 
